@@ -76,9 +76,28 @@ public function panel(Panel $panel): Panel
 
 ## Usage
 
-### Basic integration in a Filament Form
+### Recommended: `ScannerField` (native Filament field)
 
-The scanner is a Blade component rendered inside a Filament `ViewField`. It communicates back to Livewire via two mechanisms:
+Drop it directly into your form schema — no extra boilerplate needed. The field state (file path) is handled automatically by Filament, just like any other field.
+
+```php
+use Lacv\PipoScanner\Forms\Components\ScannerField;
+
+ScannerField::make('document_path')
+    ->label('Documento')
+    ->disk('public')        // optional, default: config('pipo-scanner.disk')
+    ->columnSpanFull(),
+```
+
+In **edit mode** the field reads its own state (`$record->document_path`) and shows the existing document automatically — no extra code needed.
+
+---
+
+### Legacy: `ViewField` (manual wiring)
+
+The original approach is still supported for backward compatibility.
+
+It communicates back to Livewire via two mechanisms:
 
 1. Calls `$wire.setScannerDocumentPath(path)` on the Livewire component.
 2. Dispatches a browser event `scanner-saved` with `{ path, url }`.
@@ -109,27 +128,13 @@ ViewField::make('scanner')
 
 **Step 3 — Pass existing document in edit mode:**
 
-The component reads `data-existing-path` and `data-existing-url` attributes injected by Livewire. In your `EditRecord` page, override `mutateFormDataBeforeFill()`:
-
-```php
-protected function mutateFormDataBeforeFill(array $data): array
-{
-    $this->js(
-        "window.__scannerExistingPath = " . json_encode($data['document_path'] ?? null) . ";"
-    );
-    return $data;
-}
-```
-
-Or pass them as `viewData` on the field:
-
 ```php
 ViewField::make('scanner')
     ->view('pipo-scanner::components.scanner')
     ->viewData([
         'existingPath' => $this->record?->document_path,
         'existingUrl'  => $this->record?->document_path
-            ? asset('storage/' . $this->record->document_path)
+            ? Storage::disk('public')->url($this->record->document_path)
             : null,
     ])
     ->columnSpanFull(),

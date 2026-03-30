@@ -497,7 +497,7 @@ Alpine.data('docScanner', () => ({
         async goToEditor() {
             this.phase = 'editor';
             // Signal to the form that a scan is in progress — block form submission.
-            $wire.call('setScannerDocumentPath', '__scanning__');
+            this._updateWireValue('__scanning__');
             await this.$nextTick();
 
             // Wait for the browser to finish painting and compute layout.
@@ -537,7 +537,7 @@ Alpine.data('docScanner', () => ({
             this.applyFilter('color');
 
             // Sentinel AFTER el canvas está dibujado — bloquea guardar hasta confirmar.
-            $wire.call('setScannerDocumentPath', '__scanning__');
+            this._updateWireValue('__scanning__');
         },
 
         // ─── FILTER ──────────────────────────────────────────────────────────
@@ -719,8 +719,7 @@ Alpine.data('docScanner', () => ({
                 this.pages     = [];
                 this.phase     = 'saved';
 
-                $wire.call('setScannerDocumentPath', data.path)
-                    .catch(e => console.error('[Scanner] setScannerDocumentPath falló', e));
+                this._updateWireValue(data.path);
                 this.$dispatch('scanner-saved', { path: data.path, url: data.url });
 
             } catch (err) {
@@ -779,6 +778,19 @@ Alpine.data('docScanner', () => ({
             await this.startCamera();
         },
 
+        // Update the Livewire form field value.
+        // When data-state-path is present (ScannerField mode) use $wire.set().
+        // Otherwise fall back to calling setScannerDocumentPath() (ViewField mode).
+        _updateWireValue(value) {
+            const statePath = this.$el.dataset.statePath;
+            if (statePath) {
+                $wire.set(statePath, value ?? '');
+            } else {
+                $wire.call('setScannerDocumentPath', value)
+                    .catch(e => console.error('[Scanner] setScannerDocumentPath falló', e));
+            }
+        },
+
         // Full reset — discards all queued pages and clears the form field sentinel
         async retake() {
             this.stopCamera();
@@ -788,8 +800,7 @@ Alpine.data('docScanner', () => ({
                 pages: [], savedPath: null, savedUrl: null, errorMsg: '',
                 existingPdfBytes: null,
             });
-            $wire.call('setScannerDocumentPath', null)
-                .catch(e => console.error('[Scanner] setScannerDocumentPath falló', e));
+            this._updateWireValue(null);
             this.phase = 'camera';
             await this.$nextTick();
             await this.startCamera();
@@ -921,8 +932,7 @@ Alpine.data('docScanner', () => ({
                         this.savedPath = data.path;
                         this.savedUrl  = data.url;
                         this.phase     = 'saved';
-                        $wire.call('setScannerDocumentPath', data.path)
-                            .catch(err => console.error('[Scanner] setScannerDocumentPath falló', err));
+                        this._updateWireValue(data.path);
                         this.$dispatch('scanner-saved', { path: data.path, url: data.url });
                     } catch (err) {
                         this.errorMsg = err.message;
@@ -975,15 +985,20 @@ Alpine.data('docScanner', () => ({
      Real-time edge detection · Perspective correction · 4 filters · Upload
 ──────────────────────────────────────────────────────────────────────────── --}}
 @php
-    // Filament passes $record to all component views via getExtraViewData().
-    // In create mode $record is null; in edit mode it's the Movement model.
-    $scannerExistingPath = '';
-    $scannerExistingUrl  = '';
-    $scannerRecord       = $record ?? null;
-    if ($scannerRecord && !empty($scannerRecord->document_path)) {
-        $scannerExistingPath = $scannerRecord->document_path;
-        $scannerExistingUrl  = asset('storage/' . $scannerRecord->document_path);
+    // $scannerExistingPath / $scannerExistingUrl can be pre-set by scanner-field.blade.php
+    // (ScannerField component). If not, fall back to $record->document_path (ViewField mode).
+    if (! isset($scannerExistingPath)) {
+        $scannerExistingPath = '';
+        $scannerExistingUrl  = '';
+        $scannerRecord       = $record ?? null;
+        if ($scannerRecord && ! empty($scannerRecord->document_path)) {
+            $scannerExistingPath = $scannerRecord->document_path;
+            $scannerExistingUrl  = asset('storage/' . $scannerRecord->document_path);
+        }
     }
+    // $scannerStatePath: when set, wire updates go to $wire.set(statePath, value)
+    // instead of $wire.call('setScannerDocumentPath', value).
+    $scannerStatePath = $scannerStatePath ?? null;
 @endphp
 <div
     x-data="docScanner()"
@@ -992,6 +1007,7 @@ Alpine.data('docScanner', () => ({
     data-storage-url="{{ rtrim(asset('storage'), '/') }}"
     data-existing-path="{{ $scannerExistingPath }}"
     data-existing-url="{{ $scannerExistingUrl }}"
+    @if($scannerStatePath) data-state-path="{{ $scannerStatePath }}" @endif
     class="w-full rounded-2xl bg-slate-900 shadow-2xl select-none"
     style="display:flex;flex-direction:column;overflow:hidden;position:relative;height:580px;min-height:580px;border-radius:1rem;"
 >
