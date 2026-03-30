@@ -84,12 +84,32 @@ Drop it directly into your form schema — no extra boilerplate needed. The fiel
 use Lacv\PipoScanner\Forms\Components\ScannerField;
 
 ScannerField::make('document_path')
-    ->label('Documento')
-    ->disk('public')        // optional, default: config('pipo-scanner.disk')
+    ->label('Document')
     ->columnSpanFull(),
 ```
 
 In **edit mode** the field reads its own state (`$record->document_path`) and shows the existing document automatically — no extra code needed.
+
+#### Available options
+
+| Method | Default | Description |
+|---|---|---|
+| `->disk('s3')` | `config('pipo-scanner.disk')` | Storage disk |
+| `->directory('contracts/2026')` | `config('pipo-scanner.directory')` | Upload subdirectory |
+| `->maxFileSize(8 * 1024 * 1024)` | `config('pipo-scanner.max_file_size')` | Max upload size in bytes |
+| `->height(450)` | `580` | Scanner panel height in px |
+
+**Full example:**
+
+```php
+ScannerField::make('document_path')
+    ->label('Document')
+    ->disk('public')
+    ->directory('documents/contracts')
+    ->maxFileSize(8 * 1024 * 1024)   // 8 MB
+    ->height(480)
+    ->columnSpanFull(),
+```
 
 ---
 
