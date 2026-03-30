@@ -694,7 +694,8 @@ Alpine.data('docScanner', () => ({
                     pdfDataUri = doc.output('datauristring');
                 }
 
-                const body = { pdf: pdfDataUri };
+                const directory = this.$el.dataset.directory || null;
+                const body = { pdf: pdfDataUri, ...(directory ? { directory } : {}) };
 
                 const res = await fetch('{{ route("pipo-scanner.upload") }}', {
                     method: 'POST',
@@ -856,10 +857,10 @@ Alpine.data('docScanner', () => ({
             // reset input so same file can be reselected
             e.target.value = '';
 
-            // Validar tamaño máximo: 4 MB
-            const MAX_BYTES = 4 * 1024 * 1024;
+            // Validar tamaño máximo (configurable via data-max-file-size)
+            const MAX_BYTES = parseInt(this.$el.dataset.maxFileSize, 10) || (4 * 1024 * 1024);
             if (file.size > MAX_BYTES) {
-                this.errorMsg = `El archivo es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)} MB). El tamaño máximo permitido es 4 MB.`;
+                this.errorMsg = `El archivo es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)} MB). El tamaño máximo permitido es ${(MAX_BYTES / 1024 / 1024).toFixed(0)} MB.`;
                 this.phase = 'error';
                 return;
             }
@@ -922,7 +923,7 @@ Alpine.data('docScanner', () => ({
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                                 'Accept': 'application/json',
                             },
-                            body: JSON.stringify({ pdf: pdfDataUri }),
+                            body: JSON.stringify({ pdf: pdfDataUri, ...(this.$el.dataset.directory ? { directory: this.$el.dataset.directory } : {}) }),
                         });
                         if (!res.ok) {
                             const errBody = await res.json().catch(() => ({}));
@@ -998,7 +999,10 @@ Alpine.data('docScanner', () => ({
     }
     // $scannerStatePath: when set, wire updates go to $wire.set(statePath, value)
     // instead of $wire.call('setScannerDocumentPath', value).
-    $scannerStatePath = $scannerStatePath ?? null;
+    $scannerStatePath   = $scannerStatePath ?? null;
+    $scannerDirectory   = $scannerDirectory   ?? config('pipo-scanner.directory',     'documents/scanner/temp');
+    $scannerMaxFileSize = $scannerMaxFileSize  ?? config('pipo-scanner.max_file_size', 4 * 1024 * 1024);
+    $scannerHeight      = $scannerHeight       ?? 580;
 @endphp
 <div
     x-data="docScanner()"
@@ -1007,9 +1011,11 @@ Alpine.data('docScanner', () => ({
     data-storage-url="{{ rtrim(asset('storage'), '/') }}"
     data-existing-path="{{ $scannerExistingPath }}"
     data-existing-url="{{ $scannerExistingUrl }}"
+    data-directory="{{ $scannerDirectory }}"
+    data-max-file-size="{{ $scannerMaxFileSize }}"
     @if($scannerStatePath) data-state-path="{{ $scannerStatePath }}" @endif
     class="w-full rounded-2xl bg-slate-900 shadow-2xl select-none"
-    style="display:flex;flex-direction:column;overflow:hidden;position:relative;height:580px;min-height:580px;border-radius:1rem;"
+    style="display:flex;flex-direction:column;overflow:hidden;position:relative;height:{{ $scannerHeight }}px;min-height:{{ $scannerHeight }}px;border-radius:1rem;"
 >
 
     {{-- ── HEADER ─────────────────────────────────────────────────────────── --}}

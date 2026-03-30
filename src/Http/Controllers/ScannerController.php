@@ -13,7 +13,8 @@ class ScannerController extends Controller
     public function upload(Request $request): JsonResponse
     {
         $request->validate([
-            'pdf' => ['required', 'string'],
+            'pdf'       => ['required', 'string'],
+            'directory' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
         $dataUrl = $request->input('pdf');
@@ -35,7 +36,7 @@ class ScannerController extends Controller
         }
 
         $disk      = config('pipo-scanner.disk', 'public');
-        $directory = config('pipo-scanner.directory', 'documents/scanner/temp');
+        $directory = $request->input('directory') ?: config('pipo-scanner.directory', 'documents/scanner/temp');
         $filename  = 'scan_' . now()->format('Ymd_His') . '_' . Str::random(8) . '.pdf';
         $path      = $directory . '/' . $filename;
 
