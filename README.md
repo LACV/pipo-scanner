@@ -4,7 +4,9 @@ A professional document scanner component for **Filament v3/v5**, powered by [Op
 
 Capture documents directly from the device camera, auto-detect edges, adjust corners, apply filters, and save as a multi-page PDF — all from the browser, with zero native dependencies.
 
-> 📸 Screenshots and demo GIF coming soon.
+| Ready | Editor | Filter | Saved |
+|---|---|---|---|
+| ![Ready](.github/screenshots/01-ready.png) | ![Editor](.github/screenshots/02-editor.png) | ![Filter](.github/screenshots/03-filter.png) | ![Saved](.github/screenshots/04-saved.png) |
 
 ---
 
